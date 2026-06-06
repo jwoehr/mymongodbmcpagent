@@ -352,4 +352,4 @@ The agent consists of two main components:
 
 ## License
 
-ISC
+Apache 2.0
