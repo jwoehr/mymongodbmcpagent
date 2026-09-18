@@ -37,11 +37,8 @@ if (!MONGODB_MCP_SERVER_URI) {
     process.exit(1);
 }
 
-let sessionId = null;
-let sessionLock = Promise.resolve();
-
-let availableTools = [];
-let formattedToolList = '';
+const MCPSessionManager = require('./shared/mcp-session-manager');
+const mcpManager = new MCPSessionManager(MONGODB_MCP_SERVER_URI);
 
 // --- Utility Functions ---
 
@@ -106,191 +103,6 @@ const loadSkills = async () => {
     } catch (error) {
         console.error('[Skills] Error loading skills:', error.message);
     }
-};
-
-/**
- * Parses SSE-formatted response data line
- * @param {string} rawResponse - Raw response text with SSE format
- * @returns {Object} Parsed JSON object
- * @throws {Error} If parsing fails
- */
-const parseSSEResponse = (rawResponse) => {
-    // Extract the data line from SSE format (data: {...})
-    const lines = rawResponse.split('\n');
-    const dataLine = lines.find(line => line.startsWith('data:'));
-    if (!dataLine) {
-        throw new Error('No data line found in response');
-    }
-    const jsonString = dataLine.substring(5).trim(); // Remove "data:" prefix
-    try {
-        return JSON.parse(jsonString);
-    } catch (error) {
-        throw new Error(`Failed to parse SSE response: ${error.message}`);
-    }
-};
-
-/**
- * Initializes a session with the MongoDB MCP server
- * @param {string} reqId - Optional request ID for logging
- * @returns {Promise<string>} Session ID
- * @throws {Error} If initialization fails
- */
-const initializeSession = async (reqId = null) => {
-    let releaseLock;
-    const acquireLock = new Promise(resolve => releaseLock = resolve);
-    const previousLock = sessionLock;
-    sessionLock = sessionLock.then(() => acquireLock);
-
-    try {
-        await previousLock;
-        
-        const mcpTimeoutMs = parseInt(process.env.MCP_TIMEOUT_MS) || 30000;
-        const response = await fetch(MONGODB_MCP_SERVER_URI, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/event-stream',
-            },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: 1,
-                method: 'initialize',
-                params: {
-                    protocolVersion: '2024-11-05',
-                    capabilities: {
-                        tools: {},
-                        resources: {},
-                        prompts: {}
-                    },
-                    clientInfo: {
-                        name: 'mongodb-agent',
-                        version: '1.0.0'
-                    }
-                }
-            }),
-            signal: AbortSignal.timeout(mcpTimeoutMs)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        // Extract session ID from response headers
-        const sessionIdHeader = response.headers.get('mcp-session-id');
-        if (!sessionIdHeader) {
-            throw new Error('No mcp-session-id header in response');
-        }
-
-        // Send notifications/initialized
-        await fetch(MONGODB_MCP_SERVER_URI, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/event-stream',
-                'Mcp-Session-Id': sessionIdHeader,
-            },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'notifications/initialized'
-            }),
-            signal: AbortSignal.timeout(mcpTimeoutMs)
-        });
-
-        log(reqId, '✓ Successfully initialized session with MongoDB MCP server');
-        return sessionIdHeader;
-    } catch (error) {
-        console.error(`[req=${reqId || 'sys'}] Failed to initialize session:`, error);
-        throw error;
-    } finally {
-        releaseLock();
-    }
-};
-
-/**
- * Calls an MCP tool and returns the result with automatic session recovery
- * @param {string} toolName - Name of the tool to call
- * @param {Object} toolArguments - Arguments for the tool
- * @param {boolean} isRetry - Whether this is a retry after session reconnection
- * @returns {Promise<Object>} Tool result data
- * @throws {Error} If tool call fails or returns invalid response
- */
-const callMCPTool = async (reqId, toolName, toolArguments, isRetry = false, overrideSessionId = null) => {
-    const mcpLimiter = await getMCPLimiter();
-    
-    return mcpLimiter(async () => {
-        try {
-            const mcpTimeoutMs = parseInt(process.env.MCP_TIMEOUT_MS) || 30000;
-            const response = await fetch(MONGODB_MCP_SERVER_URI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json, text/event-stream',
-                    'Mcp-Session-Id': overrideSessionId || sessionId,
-                },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: Date.now(),
-                method: 'tools/call',
-                params: {
-                    name: toolName,
-                    arguments: toolArguments,
-                },
-            }),
-            signal: AbortSignal.timeout(mcpTimeoutMs)
-        });
-        
-        // Check for session errors
-        if (response.status === 401 || response.status === 403 || response.status === 404) {
-            if (!isRetry) {
-                log(reqId, 'Session may have expired, attempting to reconnect...');
-                
-                // One-shot reconnect
-                sessionId = await initializeSession(reqId);
-                const newSessionId = sessionId;
-                
-                // Only fetch tools if the list is empty (e.g. server restart)
-                if (availableTools.length === 0) {
-                    await fetchTools(reqId);
-                }
-                
-                log(reqId, `Reconnected, retrying tool call...`);
-                return await callMCPTool(reqId, toolName, toolArguments, true, newSessionId);
-            } else {
-                throw new Error('Session reconnection failed');
-            }
-        }
-        
-        const rawResponse = await response.text();
-        const toolData = parseSSEResponse(rawResponse);
-        
-        if (!toolData.result) {
-            throw new Error('Invalid response from tool server');
-        }
-        
-        return toolData.result.structuredContent?.data
-            || toolData.result.content
-            || toolData.result;
-    } catch (error) {
-        // If it's a connection error and not already retrying, try to reconnect
-        if (!isRetry && (error.code === 'ECONNREFUSED' || error.message.includes('fetch failed'))) {
-            log(reqId, 'Connection lost, attempting to reconnect...');
-            try {
-                sessionId = await initializeSession(reqId);
-                const newSessionId = sessionId;
-                
-                if (availableTools.length === 0) {
-                    await fetchTools(reqId);
-                }
-                log(reqId, 'Reconnected successfully, retrying tool call...');
-                return await callMCPTool(reqId, toolName, toolArguments, true, newSessionId);
-            } catch (reconnectError) {
-                console.error(`[req=${reqId}] Reconnection failed:`, reconnectError);
-                throw new Error('Lost connection to MongoDB MCP server and reconnection failed');
-            }
-        }
-        throw error;
-    }
-    });
 };
 
 // --- ReAct Loop Implementation ---
@@ -363,7 +175,7 @@ Your response MUST be exactly ONE valid JSON object and nothing else. Do not use
             log(reqId, `[ReAct] Tool selected: ${action.toolName}`);
             const toolArgs = action.toolArguments || action.arguments || {};
             try {
-                const resultData = await callMCPTool(reqId, action.toolName, toolArgs);
+                const resultData = await mcpManager.callTool(reqId, action.toolName, toolArgs);
                 currentPrompt = `Tool "${action.toolName}" returned:\n${JSON.stringify(resultData, null, 2)}\n\nDecide what to do next:
 - To use another tool, return JSON: { "action": "tool", "toolName": "<name>", "toolArguments": {<args>} }
 - To provide the final answer, return JSON: { "action": "answer", "finalAnswer": "<answer text>" }
@@ -386,54 +198,6 @@ Respond with ONLY valid JSON.`;
     return res.json({ answer: finalAnswer });
 };
 
-// --- Tool Fetching ---
-/**
- * Fetches available tools from the MongoDB MCP server
- * @returns {Promise<void>}
- * @throws {Error} If the server is unreachable or returns invalid data
- */
-const fetchTools = async (reqId = null) => {
-    let releaseLock;
-    const acquireLock = new Promise(resolve => releaseLock = resolve);
-    const previousLock = sessionLock;
-    sessionLock = sessionLock.then(() => acquireLock);
-
-    try {
-        await previousLock;
-        const mcpTimeoutMs = parseInt(process.env.MCP_TIMEOUT_MS) || 30000;
-        const response = await fetch(MONGODB_MCP_SERVER_URI, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/event-stream',
-                'Mcp-Session-Id': sessionId,
-            },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: 2,
-                method: 'tools/list',
-                params: {},
-            }),
-            signal: AbortSignal.timeout(mcpTimeoutMs)
-        });
-        const rawResponse = await response.text();
-        const data = parseSSEResponse(rawResponse);
-        availableTools = data.result.tools.map(tool => ({
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-        }));
-        formattedToolList = JSON.stringify(availableTools, null, 2);
-        log(reqId, `✓ Successfully fetched ${availableTools.length} tools from mongodb-mcp-server.`);
-    } catch (error) {
-        console.error(`[req=${reqId || 'sys'}] Failed to fetch tools from mongodb-mcp-server:`, error);
-        if (!reqId) process.exit(1); // Only exit if during startup
-        throw error;
-    } finally {
-        releaseLock();
-    }
-};
-
 // --- Chat Endpoint ---
 /**
  * Handles chat requests by selecting and calling appropriate tools from the MongoDB MCP server
@@ -447,7 +211,7 @@ app.post('/chat', async (req, res) => {
     const { question, history } = req.body;
     const reqId = req.id;
 
-    if (availableTools.length === 0) {
+    if (mcpManager.availableTools.length === 0) {
         return res.status(500).json({
             answer: 'Tool list is not available. Please check the connection to the mongodb-mcp-server.'
         });
@@ -461,7 +225,7 @@ app.post('/chat', async (req, res) => {
         const chat = await llmProvider.createChat(standardizedHistory);
 
         // Run the ReAct loop to autonomously handle multi-step actions
-        await runReActLoop(reqId, chat, question, formattedToolList, res);
+        await runReActLoop(reqId, chat, question, mcpManager.formattedToolList, res);
 
     } catch (error) {
         console.error(`[req=${reqId}] Error in LLM agent:`, error);
@@ -506,10 +270,10 @@ app.listen(port, async () => {
         console.log(`Model: ${metadata.model || 'unknown'}`);
         
         // Initialize MongoDB MCP session
-        sessionId = await initializeSession();
+        await mcpManager.initializeSession();
         
         // Fetch tools from MCP server
-        await fetchTools();
+        await mcpManager.fetchTools();
         
         console.log(`\n✓ MongoDB MCP Agent Server ready at http://localhost:${port}\n`);
     } catch (error) {
