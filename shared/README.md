@@ -1,10 +1,13 @@
 # Shared LLM Provider Infrastructure
 
-This directory contains the shared LLM provider abstraction layer used by all AI agents in the MyIBMiAI project.
+This directory contains the shared LLM provider abstraction layer, concurrency
+utilities, and MCP session management used by AI agents in the MyIBMiAI project.
 
 ## Overview
 
-The shared provider infrastructure enables all agents to support multiple LLM providers without duplicating code. All agents in this project use the same provider implementations, ensuring consistent behavior and easier maintenance.
+The shared provider infrastructure enables all agents to support multiple LLM
+providers without duplicating code. All agents in this project use the same
+provider implementations, ensuring consistent behavior and easier maintenance.
 
 ## Directory Structure
 
@@ -19,24 +22,40 @@ shared/
 │   └── provider-factory.js     # Factory for creating providers
 └── config/                     # Configuration management
     └── provider-config.js      # Configuration validation
+├── concurrency/                # Concurrency limiters
+│   └── limiters.js             # p-limit based limiters for LLM and MCP calls
+├── mcp-session-manager.js      # Robust MCP session state and reconnection manager
+└── mcp-session-manager.test.js # Unit tests for MCP session manager
 ```
+
+## MCP Session Management
+
+The `MCPSessionManager` (`mcp-session-manager.js`) provides a robust, stateful
+class to handle communication with an MCP server. It features:
+
+- **State Encapsulation**: Manages `sessionId`, `availableTools`, and
+  `sessionLock` internally.
+- **Race Condition Prevention**: Ensures that concurrent tool failures
+  gracefully wait and reuse a single reconnection handshake.
+- **Testability**: Injects the `fetch` API to allow for extensive unit testing
+  without network overhead.
 
 ## Supported Providers
 
-| Provider | Type | Cost | Privacy | Setup Difficulty |
-|----------|------|------|---------|------------------|
-| **Gemini** | Cloud API | Paid | Cloud | Easy |
-| **Ollama** | Local | Free | Local | Medium |
-| **OpenAI** | Cloud API | Paid | Cloud | Easy |
-| **Anthropic** | Cloud API | Paid | Cloud | Easy |
+| Provider      | Type      | Cost | Privacy | Setup Difficulty |
+| ------------- | --------- | ---- | ------- | ---------------- |
+| **Gemini**    | Cloud API | Paid | Cloud   | Easy             |
+| **Ollama**    | Local     | Free | Local   | Medium           |
+| **OpenAI**    | Cloud API | Paid | Cloud   | Easy             |
+| **Anthropic** | Cloud API | Paid | Cloud   | Easy             |
 
 ## Usage in Agents
 
 All agents use the providers in the same way:
 
 ```javascript
-const ProviderFactory = require('../shared/providers/provider-factory');
-const ProviderConfig = require('../shared/config/provider-config');
+const ProviderFactory = require("../shared/providers/provider-factory");
+const ProviderConfig = require("../shared/config/provider-config");
 
 // Validate and get configuration
 const { provider, config } = ProviderConfig.validate();
@@ -95,16 +114,26 @@ To add a new LLM provider:
 
    ```javascript
    // providers/new-provider.js
-   const BaseLLMProvider = require('./base-provider');
-   
+   const BaseLLMProvider = require("./base-provider");
+
    class NewProvider extends BaseLLMProvider {
-       async initialize(config) { /* ... */ }
-       async createChat(history) { /* ... */ }
-       async sendMessage(chat, prompt) { /* ... */ }
-       async extractTextResponse(result) { /* ... */ }
-       transformHistory(history) { /* ... */ }
+     async initialize(config) {
+       /* ... */
+     }
+     async createChat(history) {
+       /* ... */
+     }
+     async sendMessage(chat, prompt) {
+       /* ... */
+     }
+     async extractTextResponse(result) {
+       /* ... */
+     }
+     transformHistory(history) {
+       /* ... */
+     }
    }
-   
+
    module.exports = NewProvider;
    ```
 
@@ -127,7 +156,7 @@ To add a new LLM provider:
        // ... existing
        newprovider: ['NEWPROVIDER_API_KEY', 'NEWPROVIDER_MODEL']
    };
-   
+
    static getProviderConfig(provider) {
        const configs = {
            // ... existing
@@ -152,12 +181,11 @@ To add a new LLM provider:
 
 ## Benefits of Shared Infrastructure
 
-✅ **Single Source of Truth** - One implementation, multiple consumers
-✅ **Consistency** - All agents behave identically
-✅ **Easy Maintenance** - Fix bugs once, all agents benefit
-✅ **Easy Extension** - Add providers once, all agents can use them
-✅ **Reduced Code** - ~1,200 lines shared vs ~4,800 duplicated
-✅ **Easier Testing** - Test providers once with confidence
+✅ **Single Source of Truth** - One implementation, multiple consumers ✅
+**Consistency** - All agents behave identically ✅ **Easy Maintenance** - Fix
+bugs once, all agents benefit ✅ **Easy Extension** - Add providers once, all
+agents can use them ✅ **Reduced Code** - ~1,200 lines shared vs ~4,800
+duplicated ✅ **Easier Testing** - Test providers once with confidence
 
 ## Deployment
 
@@ -225,8 +253,8 @@ ls -la shared/providers/
 All agents must use relative paths:
 
 ```javascript
-require('../shared/providers/provider-factory')  // Correct
-require('./providers/provider-factory')          // Wrong
+require("../shared/providers/provider-factory"); // Correct
+require("./providers/provider-factory"); // Wrong
 ```
 
 ## License
