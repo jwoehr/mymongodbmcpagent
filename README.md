@@ -96,7 +96,7 @@ MONGODB_MCP_SERVER_URI=http://localhost:3000/mcp
 
 ### Provider-Specific Configuration
 
-#### Google Gemini
+#### Configure Google Gemini
 
 ```bash
 LLM_PROVIDER=gemini
@@ -112,7 +112,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1:8b
 ```
 
-#### OpenAI
+#### Configure OpenAI
 
 ```bash
 LLM_PROVIDER=openai
@@ -126,7 +126,7 @@ For OpenAI-compatible APIs (LocalAI, LM Studio):
 OPENAI_BASE_URL=http://localhost:1234/v1
 ```
 
-#### Anthropic Claude
+#### Configure Anthropic Claude
 
 ```bash
 LLM_PROVIDER=anthropic
@@ -379,7 +379,7 @@ This is the main endpoint for interacting with the agent.
 
 If you see an error about missing provider package:
 
-```
+```text
 Provider "ollama" is not available. Please install the required dependency:
 npm install ollama
 ```
