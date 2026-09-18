@@ -23,37 +23,37 @@ The current `agent-server.js` maintains MCP session state (`sessionId`, `availab
 
 ### 1. Project Setup
 
-- [ ] Run `npm install --save-dev jest`.
-- [ ] Update `package.json` so that the `"test"` script runs `"jest"`.
+ - [x] Run `npm install --save-dev jest`.
+ - [x] Update `package.json` so that the `"test"` script runs `"jest"`.
 
 ### 2. Create `MCPSessionManager`
 
-- [ ] Create a new file `mcp-session-manager.js` (either in the root or `shared/` directory).
-- [ ] Define the `MCPSessionManager` class with properties: `mcpUrl`, `fetchFn`, `sessionId`, `availableTools`, `formattedToolList`, and `sessionLock`.
-- [ ] Implement `initializeSession(reqId)` to perform the MCP handshake using `this.fetchFn`.
-- [ ] Implement `fetchTools(reqId)` to populate `this.availableTools`.
-- [ ] Implement `callTool(reqId, toolName, toolArguments, failedSessionId = null)`:
+ - [x] Create a new file `mcp-session-manager.js` (either in the root or `shared/` directory).
+ - [x] Define the `MCPSessionManager` class with properties: `mcpUrl`, `fetchFn`, `sessionId`, `availableTools`, `formattedToolList`, and `sessionLock`.
+ - [x] Implement `initializeSession(reqId)` to perform the MCP handshake using `this.fetchFn`.
+ - [x] Implement `fetchTools(reqId)` to populate `this.availableTools`.
+ - [x] Implement `callTool(reqId, toolName, toolArguments, failedSessionId = null)`:
   - If a tool fails with a 401/403/404, call `reconnect(reqId, this.sessionId)` and then recursively retry.
-- [ ] Implement `reconnect(reqId, failedSessionId)`:
+ - [x] Implement `reconnect(reqId, failedSessionId)`:
   - Wait for `this.sessionLock`.
   - **Crucial fix**: `if (this.sessionId !== failedSessionId) return this.sessionId;`
   - Re-initialize session and refetch tools.
 
 ### 3. Create Unit Tests
 
-- [ ] Create `mcp-session-manager.test.js`.
-- [ ] Test 1: Successful initialization and tool fetching.
-- [ ] Test 2: Successful tool calling.
-- [ ] Test 3: Session expiration triggers a transparent reconnection.
-- [ ] Test 4: **Race condition prevention** - Simulate 5 concurrent tool calls failing simultaneously, and assert that the mocked `fetchFn` is only called *once* for the `initialize` handshake.
+ - [x] Create `mcp-session-manager.test.js`.
+ - [x] Test 1: Successful initialization and tool fetching.
+ - [x] Test 2: Successful tool calling.
+ - [x] Test 3: Session expiration triggers a transparent reconnection.
+ - [x] Test 4: **Race condition prevention** - Simulate 5 concurrent tool calls failing simultaneously, and assert that the mocked `fetchFn` is only called *once* for the `initialize` handshake.
 
 ### 4. Refactor `agent-server.js`
 
-- [ ] Import `MCPSessionManager`.
-- [ ] Remove all global MCP variables (`sessionId`, `sessionLock`, `availableTools`, `formattedToolList`) and the related functions (`initializeSession`, `callMCPTool`, `fetchTools`).
-- [ ] Instantiate `const mcpManager = new MCPSessionManager(process.env.MONGODB_MCP_SERVER_URI)`.
-- [ ] During server startup, call `await mcpManager.initializeSession()` and `await mcpManager.fetchTools()`.
-- [ ] Update the `/chat` route's ReAct loop to use `mcpManager.callTool(...)` and `mcpManager.formattedToolList`.
+ - [x] Import `MCPSessionManager`.
+ - [x] Remove all global MCP variables (`sessionId`, `sessionLock`, `availableTools`, `formattedToolList`) and the related functions (`initializeSession`, `callMCPTool`, `fetchTools`).
+ - [x] Instantiate `const mcpManager = new MCPSessionManager(process.env.MONGODB_MCP_SERVER_URI)`.
+ - [x] During server startup, call `await mcpManager.initializeSession()` and `await mcpManager.fetchTools()`.
+ - [x] Update the `/chat` route's ReAct loop to use `mcpManager.callTool(...)` and `mcpManager.formattedToolList`.
 
 ## Validation Plan
 
