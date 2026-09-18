@@ -292,11 +292,16 @@ The chat interface provides:
 🍃 MongoDB Query> Get performance statistics for my cluster
 ```
 
-## Concurrency and Timeouts
+## Single-Tenancy, Concurrency, and Timeouts
 
-The MongoDB agent is designed to handle multiple `POST /chat` requests in
-parallel safely. It uses a single MCP session protected by a mutex to avoid
-reconnect storms, and applies limits on outbound API calls.
+The MongoDB agent operates as a **single-tenant** service. It maintains exactly
+one persistent session with the underlying MongoDB MCP server for all incoming
+requests. While it can handle multiple `POST /chat` requests in parallel, they
+all share the same MCP session and database connection context.
+
+To safely handle this concurrency without reconnect storms, the agent protects
+the shared MCP session with a mutex and applies concurrency limiters on outbound
+API calls.
 
 You can tune these variables in `.env`:
 

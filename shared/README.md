@@ -1,7 +1,8 @@
 # Shared LLM Provider Infrastructure
 
 This directory contains the shared LLM provider abstraction layer, concurrency
-utilities, and MCP session management used by AI agents in the MyIBMiAI project.
+utilities, and MCP session management used by AI agents in the MongoDB MCP Agent
+project.
 
 ## Overview
 
@@ -68,13 +69,6 @@ const chat = await llmProvider.createChat(history);
 const result = await llmProvider.sendMessage(chat, prompt);
 const text = await llmProvider.extractTextResponse(result);
 ```
-
-## Agents Using This Infrastructure
-
-- [`ibmi-mcp-agent`](../ibmi-mcp-agent) - IBM i MCP tool interaction
-- [`mongodb-agent`](../mongodb-agent) - MongoDB MCP tool interaction
-- [`ibmi-php-agent`](../ibmi-php-agent) - IBM i PHP server interaction
-- [`dashboard-agent`](../dashboard-agent) - Intelligent routing between agents
 
 ## Provider Interface
 
@@ -197,7 +191,7 @@ deployment/
 ├── shared/              # Include this
 │   ├── providers/
 │   └── config/
-└── ibmi-mcp-agent/      # Agent directory
+└── mongodb-agent/      # Agent directory
     └── agent-server.js  # References ../shared/
 ```
 
@@ -221,7 +215,7 @@ cd shared
 npm test
 
 # Test with a specific agent
-cd ../ibmi-mcp-agent
+cd ../mongodb-agent
 npm start
 ```
 
