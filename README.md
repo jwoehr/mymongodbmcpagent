@@ -1,19 +1,37 @@
 # MongoDB MCP Agent
 
-This Node.js application serves as an intelligent agent that leverages Large Language Models (LLMs) to interact with a MongoDB MCP server instance. The agent is designed to understand user questions about MongoDB, select the appropriate tool from the MongoDB MCP server, execute it with the correct arguments, and then format the results into a natural, human-readable answer.
+This Node.js application serves as an intelligent agent that leverages Large
+Language Models (LLMs) to interact with a MongoDB MCP server instance. The agent
+is designed to understand user questions about MongoDB, select the appropriate
+tool from the MongoDB MCP server, execute it with the correct arguments, and
+then format the results into a natural, human-readable answer.
 
 ## Features
 
-- **Multiple LLM Provider Support:** Choose from Google Gemini, Ollama (local), OpenAI, or Anthropic Claude
-- **Intelligent Tool Selection:** Utilizes LLMs to analyze user queries and select the most appropriate MongoDB tool from the available tools provided by the MongoDB MCP server.
-- **ReAct Architecture:** Utilizes a Reason + Act (ReAct) loop that allows the agent to autonomously evaluate results and make consecutive tool calls to fulfill a request without user intervention.
-- **Skills Package Support:** Supports loading custom skills (markdown-based workflows) from a configured directory to guide the agent in complex, multi-step MongoDB tasks.
-- **Fallback to Direct Answer:** If the model cannot determine an appropriate tool to use, it will provide a direct answer based on its general knowledge.
-- **Dynamic Tool Execution:** Calls the selected tool on the MongoDB MCP server with the necessary arguments.
-- **Natural Language Response:** Formats the JSON or structured data returned by the MongoDB tools into a clear and understandable natural language response.
-- **Chat History Context:** Considers conversation history to provide more relevant and accurate answers.
-- **MCP Session Management:** Maintains a persistent session with the MongoDB MCP server for reliable communication.
-- **Interactive Chat Interface:** Includes a command-line chat client for easy interaction with MongoDB.
+- **Multiple LLM Provider Support:** Choose from Google Gemini, Ollama (local),
+  OpenAI, or Anthropic Claude
+- **Intelligent Tool Selection:** Utilizes LLMs to analyze user queries and
+  select the most appropriate MongoDB tool from the available tools provided by
+  the MongoDB MCP server.
+- **ReAct Architecture:** Utilizes a Reason + Act (ReAct) loop that allows the
+  agent to autonomously evaluate results and make consecutive tool calls to
+  fulfill a request without user intervention.
+- **Skills Package Support:** Supports loading custom skills (markdown-based
+  workflows) from a configured directory to guide the agent in complex,
+  multi-step MongoDB tasks.
+- **Fallback to Direct Answer:** If the model cannot determine an appropriate
+  tool to use, it will provide a direct answer based on its general knowledge.
+- **Dynamic Tool Execution:** Calls the selected tool on the MongoDB MCP server
+  with the necessary arguments.
+- **Natural Language Response:** Formats the JSON or structured data returned by
+  the MongoDB tools into a clear and understandable natural language response.
+- **Chat History Context:** Considers conversation history to provide more
+  relevant and accurate answers.
+- **MCP Session Management:** Maintains a persistent session with the MongoDB
+  MCP server using a robust, tested `MCPSessionManager` that prevents race
+  conditions and reconnection storms.
+- **Interactive Chat Interface:** Includes a command-line chat client for easy
+  interaction with MongoDB.
 
 ## Prerequisites
 
@@ -32,7 +50,8 @@ This Node.js application serves as an intelligent agent that leverages Large Lan
 - **Best for:** Production deployments, high accuracy
 - **Pros:** Latest models, reliable API, good performance
 - **Cons:** Requires paid API key, data sent to Google
-- **Setup:** Get API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **Setup:** Get API key from
+  [Google AI Studio](https://makersuite.google.com/app/apikey)
 
 ### Ollama (Recommended for Privacy)
 
@@ -46,18 +65,22 @@ This Node.js application serves as an intelligent agent that leverages Large Lan
 - **Best for:** Advanced reasoning, GPT-4 capabilities
 - **Pros:** Powerful models, reliable API
 - **Cons:** Higher costs, data sent to OpenAI
-- **Setup:** Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Setup:** Get API key from
+  [OpenAI Platform](https://platform.openai.com/api-keys)
 
 ### Anthropic Claude
 
 - **Best for:** Long context, detailed analysis
 - **Pros:** Excellent reasoning, large context window
 - **Cons:** Requires paid API key, data sent to Anthropic
-- **Setup:** Get API key from [Anthropic Console](https://console.anthropic.com/)
+- **Setup:** Get API key from
+  [Anthropic Console](https://console.anthropic.com/)
 
 ## Configuration
 
-Before running the agent, you need to set up the following environment variables. You can create a `.env` file in the root of this directory to store these variables. An example is provided in `.env.example`.
+Before running the agent, you need to set up the following environment
+variables. You can create a `.env` file in the root of this directory to store
+these variables. An example is provided in `.env.example`.
 
 ### Basic Configuration
 
@@ -73,7 +96,7 @@ MONGODB_MCP_SERVER_URI=http://localhost:3000/mcp
 
 ### Provider-Specific Configuration
 
-#### Google Gemini
+#### Configure Google Gemini
 
 ```bash
 LLM_PROVIDER=gemini
@@ -89,7 +112,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1:8b
 ```
 
-#### OpenAI
+#### Configure OpenAI
 
 ```bash
 LLM_PROVIDER=openai
@@ -103,7 +126,7 @@ For OpenAI-compatible APIs (LocalAI, LM Studio):
 OPENAI_BASE_URL=http://localhost:1234/v1
 ```
 
-#### Anthropic Claude
+#### Configure Anthropic Claude
 
 ```bash
 LLM_PROVIDER=anthropic
@@ -114,47 +137,54 @@ ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 ### Optional Environment Variables
 
 - `PORT`: The port on which the agent server will listen. Defaults to `3012`.
-- `MAX_ITERATIONS`: The maximum number of agent thought loops allowed to execute per request. Defaults to `5`.
-- `MONGODB_AGENT_URL`: The URL for the chat client to connect to. Defaults to `http://localhost:3012`.
-- `MONGODB_AGENT_SKILLS_PATH`: Directory path to load custom skills (`SKILL.md` files) to enhance the agent's capabilities.
+- `MAX_ITERATIONS`: The maximum number of agent thought loops allowed to execute
+  per request. Defaults to `5`.
+- `MONGODB_AGENT_URL`: The URL for the chat client to connect to. Defaults to
+  `http://localhost:3012`.
+- `MONGODB_AGENT_SKILLS_PATH`: Directory path to load custom skills (`SKILL.md`
+  files) to enhance the agent's capabilities.
 
 ## Installation
 
 1. Navigate to the `mongodb-agent` directory.
 2. Install the core dependencies:
 
-    ```bash
-    npm install
-    ```
+   ```bash
+   npm install
+   ```
 
 3. Install your chosen LLM provider package:
 
    **For Gemini:**
+
    ```bash
    npm install @google/generative-ai
    ```
 
    **For Ollama:**
+
    ```bash
    npm install ollama
    ```
 
    **For OpenAI:**
+
    ```bash
    npm install openai
    ```
 
    **For Anthropic:**
+
    ```bash
    npm install @anthropic-ai/sdk
    ```
 
 4. Copy the example environment file and configure it:
 
-    ```bash
-    cp .env.example .env
-    # Edit .env with your actual values
-    ```
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual values
+   ```
 
 ## Ollama Setup
 
@@ -174,8 +204,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-**Windows:**
-Download from [ollama.com](https://ollama.com/download)
+**Windows:** Download from [ollama.com](https://ollama.com/download)
 
 ### 2. Start Ollama Server
 
@@ -207,7 +236,8 @@ OLLAMA_MODEL=llama3.1:8b  # Use the model you pulled
 
 ### Starting the Agent Server
 
-To start the agent server, run the following command from within the `mongodb-agent` directory:
+To start the agent server, run the following command from within the
+`mongodb-agent` directory:
 
 ```bash
 npm start
@@ -219,7 +249,9 @@ Or directly:
 node agent-server.js
 ```
 
-Upon successful startup, the agent will fetch the available tools from the MongoDB MCP server and will be ready to accept requests on the configured port (default: 3012).
+Upon successful startup, the agent will fetch the available tools from the
+MongoDB MCP server and will be ready to accept requests on the configured port
+(default: 3012).
 
 ### Using the Interactive Chat Client
 
@@ -260,20 +292,32 @@ The chat interface provides:
 🍃 MongoDB Query> Get performance statistics for my cluster
 ```
 
-## Concurrency and Timeouts
+## Single-Tenancy, Concurrency, and Timeouts
 
-The MongoDB agent is designed to handle multiple `POST /chat` requests in parallel safely. It uses a single MCP session protected by a mutex to avoid reconnect storms, and applies limits on outbound API calls.
+The MongoDB agent operates as a **single-tenant** service. It maintains exactly
+one persistent session with the underlying MongoDB MCP server for all incoming
+requests. While it can handle multiple `POST /chat` requests in parallel, they
+all share the same MCP session and database connection context.
+
+To safely handle this concurrency without reconnect storms, the agent protects
+the shared MCP session with a mutex and applies concurrency limiters on outbound
+API calls.
 
 You can tune these variables in `.env`:
 
-- `LLM_CONCURRENCY` (default: 4): Maximum parallel requests to the LLM. If using Ollama locally, you may want to lower this to 1 to match Ollama's default single-model queueing.
-- `MCP_CONCURRENCY` (default: 8): Maximum parallel tool calls sent to the MongoDB MCP server.
+- `LLM_CONCURRENCY` (default: 4): Maximum parallel requests to the LLM. If using
+  Ollama locally, you may want to lower this to 1 to match Ollama's default
+  single-model queueing.
+- `MCP_CONCURRENCY` (default: 8): Maximum parallel tool calls sent to the
+  MongoDB MCP server.
 - `LLM_TIMEOUT_MS` (default: 60000): Milliseconds before an LLM call aborts.
-- `MCP_TIMEOUT_MS` (default: 30000): Milliseconds before an MCP tool call aborts.
+- `MCP_TIMEOUT_MS` (default: 30000): Milliseconds before an MCP tool call
+  aborts.
 
 ### `GET /metrics`
 
-Returns a lightweight JSON object containing the current number of active and pending calls in both the LLM and MCP limiters.
+Returns a lightweight JSON object containing the current number of active and
+pending calls in both the LLM and MCP limiters.
 
 ## API Endpoint
 
@@ -285,19 +329,20 @@ This is the main endpoint for interacting with the agent.
 
 ```json
 {
-    "question": "Your MongoDB question here",
-    "history": []
+  "question": "Your MongoDB question here",
+  "history": []
 }
 ```
 
 - `question` (string, required): The user's question or prompt about MongoDB.
-- `history` (array, optional): An array of previous conversation turns to provide context to the model.
+- `history` (array, optional): An array of previous conversation turns to
+  provide context to the model.
 
 **Success Response (200 OK):**
 
 ```json
 {
-    "answer": "The formatted, natural language answer to your MongoDB question."
+  "answer": "The formatted, natural language answer to your MongoDB question."
 }
 ```
 
@@ -305,18 +350,28 @@ This is the main endpoint for interacting with the agent.
 
 ```json
 {
-    "answer": "Sorry, there was an error processing your request."
+  "answer": "Sorry, there was an error processing your request."
 }
 ```
 
 ## How It Works
 
-1. **Server Initialization:** On startup, the agent establishes a session with the MongoDB MCP server using the MCP protocol initialize handshake.
-2. **Tool Discovery:** The agent fetches and caches the list of available MongoDB tools from the MCP server.
-3. **Skill Loading:** The agent loads available custom skills from the configured skills path, providing the LLM with complex, multi-step MongoDB workflows.
-4. **User Query:** The user submits a question through the `/chat` endpoint or the interactive chat client.
-5. **ReAct Loop:** The agent uses a Reason + Act (ReAct) loop with the configured LLM to handle the query. It evaluates the question against available tools and skills, iteratively calling tools, analyzing results, and making consecutive tool calls if needed.
-6. **Result Delivery:** Once the agent determines the request is fully satisfied, it formats the final natural language answer and returns it to the user.
+1. **Server Initialization:** On startup, the agent establishes a session with
+   the MongoDB MCP server using the MCP protocol initialize handshake.
+2. **Tool Discovery:** The agent fetches and caches the list of available
+   MongoDB tools from the MCP server.
+3. **Skill Loading:** The agent loads available custom skills from the
+   configured skills path, providing the LLM with complex, multi-step MongoDB
+   workflows.
+4. **User Query:** The user submits a question through the `/chat` endpoint or
+   the interactive chat client.
+5. **ReAct Loop:** The agent uses a Reason + Act (ReAct) loop with the
+   configured LLM to handle the query. It evaluates the question against
+   available tools and skills, iteratively calling tools, analyzing results, and
+   making consecutive tool calls if needed.
+6. **Result Delivery:** Once the agent determines the request is fully
+   satisfied, it formats the final natural language answer and returns it to the
+   user.
 
 ## Troubleshooting
 
@@ -324,7 +379,7 @@ This is the main endpoint for interacting with the agent.
 
 If you see an error about missing provider package:
 
-```
+```text
 Provider "ollama" is not available. Please install the required dependency:
 npm install ollama
 ```
@@ -340,15 +395,24 @@ For cloud providers (Gemini, OpenAI, Anthropic), ensure:
 
 ### MongoDB MCP Server Connection
 
-- **"Tool list is not available"**: Ensure the MongoDB MCP server is running and accessible at the URI specified in `MONGODB_MCP_SERVER_URI`.
-- **Connection Refused**: Verify that the MongoDB MCP server is started and listening on the correct port.
+- **"Tool list is not available"**: Ensure the MongoDB MCP server is running and
+  accessible at the URI specified in `MONGODB_MCP_SERVER_URI`.
+- **Connection Refused**: Verify that the MongoDB MCP server is started and
+  listening on the correct port.
 
 ## Development
 
-The agent consists of two main components:
+The agent consists of several main components:
 
-1. **agent-server.js**: The Express server that handles chat requests and communicates with both the LLM and the MongoDB MCP server.
-2. **chat.js**: An interactive command-line interface for querying MongoDB using natural language.
+1. **agent-server.js**: The Express server that handles chat requests and
+   communicates with both the LLM and the MongoDB MCP server.
+2. **chat.js**: An interactive command-line interface for querying MongoDB using
+   natural language.
+3. **shared/mcp-session-manager.js**: Encapsulates MCP session state, tool
+   execution, and robust reconnection logic.
+4. **Testing**: Includes automated Jest unit tests (e.g.,
+   `shared/mcp-session-manager.test.js`) to validate session handling and race
+   condition prevention.
 
 ## License
 
