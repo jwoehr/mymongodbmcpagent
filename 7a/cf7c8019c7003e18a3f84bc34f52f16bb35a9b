@@ -1,0 +1,14 @@
+GettingStarted.md
+  h_00d79582c3c048 1-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7acf7c8019c7003e18a3f84bc34f52f16bb35a9b",
+  "prompts": {},
+  "humans": {
+    "h_00d79582c3c048": {
+      "author": "Jack Woehr <jwoehr@softwoehr.com>"
+    }
+  }
+}
